@@ -8,6 +8,7 @@ const DEV_API_URL = Platform.select({
 
 export const Config = {
   API_URL: DEV_API_URL,
+  RAZORPAY_KEY_ID: 'rzp_test_mockkeyid123',
 };
 
 export default Config;
