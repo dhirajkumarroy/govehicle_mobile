@@ -1,4 +1,4 @@
-import { Vehicle } from './vehicle';
+import { Vehicle, VehicleOwner } from './vehicle';
 
 export interface Booking {
   id: string;
@@ -14,6 +14,7 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   vehicle?: Vehicle;
+  customer?: VehicleOwner;
 }
 
 export interface CreateBookingPayload {

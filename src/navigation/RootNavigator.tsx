@@ -25,6 +25,9 @@ import OwnerDashboardScreen from '../screens/home/OwnerDashboardScreen';
 // Vehicle Screens
 import VehicleListScreen from '../screens/vehicle/VehicleListScreen';
 import VehicleDetailsScreen from '../screens/vehicle/VehicleDetailsScreen';
+import MyVehiclesScreen from '../screens/vehicle/MyVehiclesScreen';
+import CreateVehicleScreen from '../screens/vehicle/CreateVehicleScreen';
+import EditVehicleScreen from '../screens/vehicle/EditVehicleScreen';
 
 // Booking Screens
 import MyBookingsScreen from '../screens/booking/MyBookingsScreen';
@@ -61,6 +64,9 @@ const HomeStackNavigator = () => {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeScreen" component={HomeScreen} />
       <HomeStack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+      <HomeStack.Screen name="MyVehicles" component={MyVehiclesScreen} />
+      <HomeStack.Screen name="CreateVehicle" component={CreateVehicleScreen} />
+      <HomeStack.Screen name="EditVehicle" component={EditVehicleScreen} />
     </HomeStack.Navigator>
   );
 };

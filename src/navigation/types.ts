@@ -6,6 +6,9 @@ export type AuthStackParamList = {
 export type HomeStackParamList = {
   HomeScreen: undefined;
   OwnerDashboard: undefined;
+  MyVehicles: undefined;
+  CreateVehicle: undefined;
+  EditVehicle: { vehicleId: string };
 };
 
 export type VehicleStackParamList = {
