@@ -1,117 +1,169 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Image, TouchableOpacity, TextInput, SafeAreaView } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  TextInput,
+  SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useVehicles } from '../../hooks/useVehicles';
 import { VehicleStackParamList } from '../../navigation/types';
-
-interface VehicleMock {
-  id: string;
-  title: string;
-  brand: string;
-  model: string;
-  pricePerDay: number;
-  image: string;
-  fuelType: string;
-  transmission: string;
-  rating: number;
-}
-
-const MOCK_VEHICLES: VehicleMock[] = [
-  {
-    id: '1',
-    title: 'Model S Plaid',
-    brand: 'Tesla',
-    model: 'Model S',
-    pricePerDay: 150,
-    image: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=500&auto=format&fit=crop',
-    fuelType: 'ELECTRIC',
-    transmission: 'AUTOMATIC',
-    rating: 4.9,
-  },
-  {
-    id: '2',
-    title: 'Mustang Shelby GT500',
-    brand: 'Ford',
-    model: 'Mustang',
-    pricePerDay: 120,
-    image: 'https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?w=500&auto=format&fit=crop',
-    fuelType: 'PETROL',
-    transmission: 'MANUAL',
-    rating: 4.8,
-  },
-  {
-    id: '3',
-    title: 'A6 E-Tron',
-    brand: 'Audi',
-    model: 'A6',
-    pricePerDay: 95,
-    image: 'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=500&auto=format&fit=crop',
-    fuelType: 'HYBRID',
-    transmission: 'AUTOMATIC',
-    rating: 4.7,
-  },
-];
+import Config from '../../config';
+import { Vehicle } from '../../types/vehicle';
 
 export const VehicleListScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<VehicleStackParamList>>();
   const [search, setSearch] = useState('');
+  const [selectedFuelType, setSelectedFuelType] = useState<string | undefined>(undefined);
 
-  const filteredVehicles = MOCK_VEHICLES.filter(v =>
-    v.title.toLowerCase().includes(search.toLowerCase()) ||
-    v.brand.toLowerCase().includes(search.toLowerCase())
-  );
+  // Invoke React Query hook with search and category filters
+  const { data, isLoading, isError, error, refetch, isFetching } = useVehicles({
+    search: search || undefined,
+    fuelType: selectedFuelType || undefined,
+  });
 
-  const renderItem = ({ item }: { item: VehicleMock }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('VehicleDetails', { id: item.id })}
-    >
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
-      <View style={styles.cardInfo}>
-        <View style={styles.titleRow}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.ratingText}>★ {item.rating}</Text>
-        </View>
-        <Text style={styles.cardSubtitle}>{item.brand} • {item.model}</Text>
-        
-        <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.fuelType}</Text>
+  const vehicles = data?.vehicles || [];
+
+  // Helper function to resolve dynamic image endpoints
+  const getFullImageUrl = (imagePath?: string): string => {
+    const fallbackImage = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=500&auto=format&fit=crop';
+    if (!imagePath) return fallbackImage;
+    if (imagePath.startsWith('http')) return imagePath;
+
+    // Extract base URL (e.g., http://localhost:8000) from Config.API_URL
+    const baseUrl = Config.API_URL.split('/api/v1')[0];
+    return `${baseUrl}/${imagePath.replace(/^\//, '')}`;
+  };
+
+  const renderItem = ({ item }: { item: Vehicle }) => {
+    // Determine thumbnail image
+    const primaryImageObj = item.images.find(img => img.isPrimary) || item.images[0];
+    const imageUri = getFullImageUrl(primaryImageObj?.imageUrl);
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('VehicleDetails', { id: item.id })}
+      >
+        <Image source={{ uri: imageUri }} style={styles.cardImage} />
+        <View style={styles.cardInfo}>
+          <View style={styles.titleRow}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <View style={[styles.availabilityBadge, item.isAvailable ? styles.badgeAvailable : styles.badgeUnavailable]}>
+              <Text style={styles.availabilityText}>
+                {item.isAvailable ? 'Available' : 'Booked'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.transmission}</Text>
+          <Text style={styles.cardSubtitle}>{item.brand} • {item.model}</Text>
+          
+          <View style={styles.badgeRow}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.fuelType}</Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.transmission}</Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.city}</Text>
+            </View>
+          </View>
+
+          <View style={styles.priceRow}>
+            <Text style={styles.price}><Text style={styles.priceAmount}>${item.pricePerDay}</Text>/day</Text>
+            <Text style={styles.bookNow}>View Details →</Text>
           </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
 
-        <View style={styles.priceRow}>
-          <Text style={styles.price}><Text style={styles.priceAmount}>${item.pricePerDay}</Text>/day</Text>
-          <Text style={styles.bookNow}>View Details →</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  const fuelTypes = ['ALL', 'PETROL', 'DIESEL', 'CNG', 'ELECTRIC', 'HYBRID'];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Find Your Ride</Text>
-        <Text style={styles.subtitle}>Rent premium cars near you instantly</Text>
+        <Text style={styles.subtitle}>Rent premium vehicles verified locally</Text>
+        
         <TextInput
           style={styles.searchInput}
-          placeholder="Search brand, model..."
+          placeholder="Search brand, model or city..."
           placeholderTextColor="#64748b"
           value={search}
           onChangeText={setSearch}
         />
       </View>
 
-      <FlatList
-        data={filteredVehicles}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* Fuel Type Filters */}
+      <View style={styles.filterWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {fuelTypes.map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.filterTab,
+                ((type === 'ALL' && selectedFuelType === undefined) || selectedFuelType === type) && styles.filterTabActive
+              ]}
+              onPress={() => setSelectedFuelType(type === 'ALL' ? undefined : type)}
+            >
+              <Text
+                style={[
+                  styles.filterTabText,
+                  ((type === 'ALL' && selectedFuelType === undefined) || selectedFuelType === type) && styles.filterTabTextActive
+                ]}
+              >
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8b5cf6" />
+          <Text style={styles.loadingText}>Fetching available listings...</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load vehicles.</Text>
+          <Text style={styles.errorSub}>{error?.message || 'Server error occurred.'}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+            <Text style={styles.retryBtnText}>Retry Fetch</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={vehicles}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching}
+              onRefresh={refetch}
+              tintColor="#8b5cf6"
+              colors={['#8b5cf6']}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>No vehicles found</Text>
+              <Text style={styles.emptySubtitle}>Try adjusting your search query or filters.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -123,8 +175,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    marginBottom: 16,
+    paddingTop: 16,
   },
   title: {
     fontSize: 28,
@@ -148,9 +199,38 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginTop: 16,
   },
+  filterWrapper: {
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  filterScroll: {
+    paddingHorizontal: 24,
+  },
+  filterTab: {
+    backgroundColor: '#161622',
+    borderColor: '#1e1e2f',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  filterTabActive: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderColor: '#8b5cf6',
+  },
+  filterTabText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  filterTabTextActive: {
+    color: '#a78bfa',
+  },
   listContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
+    paddingTop: 10,
   },
   card: {
     backgroundColor: '#161622',
@@ -177,10 +257,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
-  ratingText: {
-    color: '#eab308',
+  availabilityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeAvailable: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+  },
+  badgeUnavailable: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  availabilityText: {
+    fontSize: 10,
     fontWeight: '700',
-    fontSize: 13,
+    color: '#cbd5e1',
   },
   cardSubtitle: {
     fontSize: 13,
@@ -200,9 +291,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   badgeText: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#cbd5e1',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   priceRow: {
     flexDirection: 'row',
@@ -227,6 +319,65 @@ const styles = StyleSheet.create({
     color: '#8b5cf6',
     fontWeight: '700',
     fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorSub: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: '#1e1e2f',
+    borderColor: '#2d2d44',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#cbd5e1',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#cbd5e1',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 4,
+    fontWeight: '500',
   },
 });
 
