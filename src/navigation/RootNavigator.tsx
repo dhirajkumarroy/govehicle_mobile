@@ -10,6 +10,7 @@ import {
   VehicleStackParamList,
   BookingStackParamList,
   AppTabParamList,
+  ProfileStackParamList,
 } from './types';
 
 // Auth Screens
@@ -35,11 +36,13 @@ import NotificationsScreen from '../screens/notification/NotificationsScreen';
 
 // Profile Screen
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const VehicleStack = createNativeStackNavigator<VehicleStackParamList>();
 const BookingStack = createNativeStackNavigator<BookingStackParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
 // 1. Auth Stack Navigator
@@ -80,6 +83,16 @@ const BookingStackNavigator = () => {
       <BookingStack.Screen name="BookingScreen" component={BookingScreen} />
       <BookingStack.Screen name="PaymentScreen" component={PaymentScreen} />
     </BookingStack.Navigator>
+  );
+};
+
+// 4.5. Profile Stack Navigator
+const ProfileStackNavigator = () => {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileScreen" component={ProfileScreen} />
+      <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+    </ProfileStack.Navigator>
   );
 };
 
@@ -139,7 +152,7 @@ const AppTabNavigator = () => {
       />
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{ tabBarLabel: 'Profile' }}
       />
     </Tab.Navigator>

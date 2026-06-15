@@ -27,6 +27,11 @@ export type AppTabParamList = {
   ProfileTab: undefined;
 };
 
+export type ProfileStackParamList = {
+  ProfileScreen: undefined;
+  ChangePassword: undefined;
+};
+
 export type RootStackParamList = {
   Splash: undefined;
   AuthStack: undefined;
