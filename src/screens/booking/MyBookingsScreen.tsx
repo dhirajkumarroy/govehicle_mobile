@@ -1,57 +1,28 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useMyBookings } from '../../hooks/useBookings';
 import { BookingStackParamList } from '../../navigation/types';
-
-interface BookingMock {
-  id: string;
-  vehicleTitle: string;
-  startDate: string;
-  endDate: string;
-  totalAmount: number;
-  status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'REFUNDED';
-}
-
-const MOCK_BOOKINGS: BookingMock[] = [
-  {
-    id: 'b1',
-    vehicleTitle: 'Model S Plaid',
-    startDate: '2026-07-20',
-    endDate: '2026-07-25',
-    totalAmount: 750,
-    status: 'PENDING',
-  },
-  {
-    id: 'b2',
-    vehicleTitle: 'Mustang Shelby GT500',
-    startDate: '2026-06-01',
-    endDate: '2026-06-03',
-    totalAmount: 240,
-    status: 'CONFIRMED',
-  },
-  {
-    id: 'b3',
-    vehicleTitle: 'A6 E-Tron',
-    startDate: '2026-05-15',
-    endDate: '2026-05-17',
-    totalAmount: 190,
-    status: 'CANCELLED',
-  },
-];
+import { Booking } from '../../types/booking';
 
 export const MyBookingsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<BookingStackParamList>>();
   const [activeTab, setActiveTab] = useState<'UPCOMING' | 'PAST'>('UPCOMING');
 
-  const filteredBookings = MOCK_BOOKINGS.filter((b) => {
-    const isUpcoming = b.status === 'PENDING' || b.status === 'CONFIRMED';
+  const { data, isLoading, isError, error, refetch, isFetching } = useMyBookings();
+
+  const bookings = data?.bookings || [];
+
+  const filteredBookings = bookings.filter((b) => {
+    const isUpcoming = b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'ACCEPTED';
     return activeTab === 'UPCOMING' ? isUpcoming : !isUpcoming;
   });
 
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
+      case 'ACCEPTED':
         return styles.statusConfirmed;
       case 'PENDING':
         return styles.statusPending;
@@ -63,10 +34,12 @@ export const MyBookingsScreen: React.FC = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: BookingMock }) => (
+  const renderItem = ({ item }: { item: Booking }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.vehicleTitle}>{item.vehicleTitle}</Text>
+        <Text style={styles.vehicleTitle}>
+          {item.vehicle ? `${item.vehicle.brand} ${item.vehicle.model}` : 'Vehicle Listing'}
+        </Text>
         <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
           <Text style={styles.statusText}>{item.status}</Text>
         </View>
@@ -75,14 +48,18 @@ export const MyBookingsScreen: React.FC = () => {
       <View style={styles.detailsRow}>
         <View style={styles.detail}>
           <Text style={styles.detailLabel}>Start Date</Text>
-          <Text style={styles.detailValue}>{item.startDate}</Text>
+          <Text style={styles.detailValue}>
+            {item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A'}
+          </Text>
         </View>
         <View style={styles.detail}>
           <Text style={styles.detailLabel}>End Date</Text>
-          <Text style={styles.detailValue}>{item.endDate}</Text>
+          <Text style={styles.detailValue}>
+            {item.endDate ? new Date(item.endDate).toLocaleDateString() : 'N/A'}
+          </Text>
         </View>
         <View style={styles.detail}>
-          <Text style={styles.detailLabel}>Total Paid</Text>
+          <Text style={styles.detailLabel}>Total Amount</Text>
           <Text style={styles.detailValue}>${item.totalAmount}</Text>
         </View>
       </View>
@@ -130,18 +107,41 @@ export const MyBookingsScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredBookings}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No reservations found in this category.</Text>
-          </View>
-        }
-      />
+      {isLoading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#8b5cf6" />
+          <Text style={styles.loadingText}>Fetching reservations catalog...</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Load failed</Text>
+          <Text style={styles.errorSub}>{error?.message || 'Server error occurred.'}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+            <Text style={styles.retryBtnText}>Retry Fetch</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBookings}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching}
+              onRefresh={refetch}
+              tintColor="#8b5cf6"
+              colors={['#8b5cf6']}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No reservations found in this category.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -230,22 +230,22 @@ const styles = StyleSheet.create({
   statusConfirmed: {
     backgroundColor: 'rgba(34, 197, 94, 0.15)',
     borderColor: '#22c55e',
-    color: '#22c55e',
+    color: '#cbd5e1', // Badges contain text color locally
   },
   statusPending: {
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
     borderColor: '#eab308',
-    color: '#eab308',
+    color: '#cbd5e1',
   },
   statusCancelled: {
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderColor: '#ef4444',
-    color: '#ef4444',
+    color: '#cbd5e1',
   },
   statusDefault: {
     backgroundColor: 'rgba(100, 116, 139, 0.15)',
     borderColor: '#64748b',
-    color: '#64748b',
+    color: '#cbd5e1',
   },
   detailsRow: {
     flexDirection: 'row',
@@ -288,6 +288,45 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 14,
     fontWeight: '500',
+  },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: '#0f0f16',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorSub: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: '#1e1e2f',
+    borderColor: '#2d2d44',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#cbd5e1',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });
 

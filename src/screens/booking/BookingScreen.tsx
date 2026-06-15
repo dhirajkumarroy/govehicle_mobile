@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useCreateBooking } from '../../hooks/useBookings';
 import { BookingStackParamList } from '../../navigation/types';
 
 type BookingScreenRouteProp = RouteProp<BookingStackParamList, 'BookingScreen'>;
 
 export const BookingScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<BookingStackParamList>>();
+  const navigation = useNavigation<any>();
   const route = useRoute<BookingScreenRouteProp>();
   const { vehicleId, pricePerDay, title } = route.params;
 
@@ -16,24 +16,65 @@ export const BookingScreen: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [totalDays, setTotalDays] = useState(5);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [loading, setLoading] = useState(false);
+
+  const createBookingMutation = useCreateBooking();
 
   useEffect(() => {
-    // Basic day calculator simulator
-    setTotalAmount(totalDays * pricePerDay);
-  }, [totalDays, pricePerDay]);
+    // Dynamic duration calculator
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const timeDiff = end.getTime() - start.getTime();
+        const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        if (days > 0) {
+          setTotalDays(days);
+          setTotalAmount(days * pricePerDay);
+        } else {
+          setTotalDays(0);
+          setTotalAmount(0);
+        }
+      }
+    } catch (error) {
+      setTotalDays(0);
+      setTotalAmount(0);
+    }
+  }, [startDate, endDate, pricePerDay]);
 
   const handleConfirmBooking = () => {
-    setLoading(true);
-    // Simulate booking creation API dispatch
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to payment screen passing mock generated booking ID
-      navigation.navigate('PaymentScreen', {
-        bookingId: `mock_b_${Math.floor(Math.random() * 10000)}`,
-        amount: totalAmount,
-      });
-    }, 1500);
+    if (totalDays <= 0) {
+      Alert.alert('Validation Error', 'Booking duration must be at least 1 day.');
+      return;
+    }
+
+    createBookingMutation.mutate({
+      vehicleId,
+      startDate,
+      endDate,
+      notes: notes || undefined,
+    }, {
+      onSuccess: (newBooking) => {
+        Alert.alert(
+          'Booking Created',
+          'Your booking request has been successfully submitted. Proceeding to checkout.',
+          [
+            {
+              text: 'Go to Pay',
+              onPress: () => {
+                // Navigate to PaymentScreen
+                navigation.navigate('PaymentScreen', {
+                  bookingId: newBooking.id,
+                  amount: newBooking.totalAmount,
+                });
+              },
+            },
+          ]
+        );
+      },
+      onError: (error: any) => {
+        Alert.alert('Booking Failed', error?.message || 'Date conflicts or validation error occurred.');
+      }
+    });
   };
 
   return (
@@ -54,25 +95,20 @@ export const BookingScreen: React.FC = () => {
           <View style={styles.divider} />
 
           {/* Dates selectors */}
-          <Text style={styles.label}>Start Date</Text>
+          <Text style={styles.label}>Start Date (YYYY-MM-DD)</Text>
           <TextInput
             style={styles.input}
             value={startDate}
-            onChangeText={(text) => {
-              setStartDate(text);
-              // Simple simulation update
-            }}
+            onChangeText={setStartDate}
             placeholder="YYYY-MM-DD"
             placeholderTextColor="#64748b"
           />
 
-          <Text style={styles.label}>End Date</Text>
+          <Text style={styles.label}>End Date (YYYY-MM-DD)</Text>
           <TextInput
             style={styles.input}
             value={endDate}
-            onChangeText={(text) => {
-              setEndDate(text);
-            }}
+            onChangeText={setEndDate}
             placeholder="YYYY-MM-DD"
             placeholderTextColor="#64748b"
           />
@@ -106,15 +142,23 @@ export const BookingScreen: React.FC = () => {
             <Text style={styles.totalVal}>${totalAmount}</Text>
           </View>
         </View>
+
+        {createBookingMutation.isError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>
+              {(createBookingMutation.error as any)?.message || 'Validation error occurred.'}
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.confirmButton}
           onPress={handleConfirmBooking}
-          disabled={loading}
+          disabled={createBookingMutation.isPending}
         >
-          {loading ? (
+          {createBookingMutation.isPending ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text style={styles.confirmButtonText}>Confirm & Go to Payment</Text>
@@ -208,6 +252,7 @@ const styles = StyleSheet.create({
     borderColor: '#1e1e2f',
     borderRadius: 16,
     padding: 20,
+    marginBottom: 20,
   },
   pricingTitle: {
     fontSize: 15,
@@ -239,6 +284,20 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
     fontSize: 18,
     fontWeight: '800',
+  },
+  errorBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   footer: {
     position: 'absolute',
