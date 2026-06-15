@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, Platform } from 'react-native';
 import { useAppSelector } from '../store';
+import { useUnreadCount } from '../hooks/useNotifications';
 import {
   AuthStackParamList,
   HomeStackParamList,
@@ -84,6 +85,9 @@ const BookingStackNavigator = () => {
 
 // 5. Main App Bottom Tab Navigator
 const AppTabNavigator = () => {
+  const { data: unreadCountData } = useUnreadCount();
+  const unreadCount = unreadCountData?.count || 0;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -122,7 +126,16 @@ const AppTabNavigator = () => {
       <Tab.Screen
         name="NotificationTab"
         component={NotificationsScreen}
-        options={{ tabBarLabel: 'Alerts' }}
+        options={{
+          tabBarLabel: 'Alerts',
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#ef4444',
+            color: '#ffffff',
+            fontSize: 10,
+            lineHeight: 14,
+          },
+        }}
       />
       <Tab.Screen
         name="ProfileTab"
