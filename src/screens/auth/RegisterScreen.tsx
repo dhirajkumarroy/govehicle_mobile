@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +17,11 @@ import { z } from 'zod';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { registerUser, clearError } from '../../store/slices/authSlice';
 import { AuthStackParamList } from '../../navigation/types';
+import AppInput from '../../components/AppInput';
+import AppButton from '../../components/AppButton';
+import colors from '../../theme/colors';
+import spacing from '../../theme/spacing';
+import typography from '../../theme/typography';
 
 const registerSchema = z.object({
   name: z
@@ -52,7 +55,6 @@ export const RegisterScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { loading, error } = useAppSelector((state) => state.auth);
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -97,7 +99,7 @@ export const RegisterScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Join GoVehicle</Text>
-          <Text style={styles.subtitle}>Create your profile to start list or rent vehicles</Text>
+          <Text style={styles.subtitle}>Create your profile to start listing or renting vehicles</Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -108,91 +110,73 @@ export const RegisterScreen: React.FC = () => {
           )}
 
           {/* Name Input */}
-          <Text style={styles.label}>Full Name</Text>
           <Controller
             control={control}
             name="name"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={[styles.input, errors.name && styles.inputError]}
+              <AppInput
+                label="Full Name"
                 placeholder="Enter your name"
-                placeholderTextColor="#64748b"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                error={errors.name?.message}
               />
             )}
           />
-          {errors.name && <Text style={styles.validationError}>{errors.name.message}</Text>}
 
           {/* Email Input */}
-          <Text style={styles.label}>Email Address</Text>
           <Controller
             control={control}
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
+              <AppInput
+                label="Email Address"
                 placeholder="Enter your email"
-                placeholderTextColor="#64748b"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                error={errors.email?.message}
               />
             )}
           />
-          {errors.email && <Text style={styles.validationError}>{errors.email.message}</Text>}
 
           {/* Phone Input */}
-          <Text style={styles.label}>Phone Number</Text>
           <Controller
             control={control}
             name="phone"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={[styles.input, errors.phone && styles.inputError]}
+              <AppInput
+                label="Phone Number"
                 placeholder="e.g. +919900000001"
-                placeholderTextColor="#64748b"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
                 keyboardType="phone-pad"
+                error={errors.phone?.message}
               />
             )}
           />
-          {errors.phone && <Text style={styles.validationError}>{errors.phone.message}</Text>}
 
           {/* Password Input */}
-          <Text style={styles.label}>Password</Text>
           <Controller
             control={control}
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={[styles.passwordInput, errors.password && styles.inputError]}
-                  placeholder="Enter secure password"
-                  placeholderTextColor="#64748b"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.visibilityToggle}
-                >
-                  <Text style={styles.visibilityText}>
-                    {showPassword ? 'Hide' : 'Show'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <AppInput
+                label="Password"
+                placeholder="Enter secure password"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                secureTextEntry
+                autoCapitalize="none"
+                error={errors.password?.message}
+              />
             )}
           />
-          {errors.password && <Text style={styles.validationError}>{errors.password.message}</Text>}
 
           {/* Role Toggle Selector */}
           <Text style={styles.label}>Register As</Text>
@@ -233,27 +217,25 @@ export const RegisterScreen: React.FC = () => {
           </View>
 
           {/* Submit Button */}
-          <TouchableOpacity
-            style={styles.button}
+          <AppButton
+            title="Register"
             onPress={handleSubmit(onSubmit)}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.buttonText}>Register</Text>
-            )}
-          </TouchableOpacity>
+            loading={loading}
+            style={styles.submitButton}
+          />
 
           {/* Login Redirect */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => {
-              dispatch(clearError());
-              navigation.navigate('Login');
-            }}>
-              <Text style={styles.footerLink}>Log In</Text>
-            </TouchableOpacity>
+            <AppButton
+              title="Log In"
+              variant="outline"
+              onPress={() => {
+                dispatch(clearError());
+                navigation.navigate('Login');
+              }}
+              style={styles.loginButton}
+            />
           </View>
         </View>
       </ScrollView>
@@ -264,158 +246,100 @@ export const RegisterScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f16',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
   },
   headerContainer: {
-    marginBottom: 28,
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#ffffff',
+    fontSize: typography.sizes.h1,
+    fontWeight: typography.weights.extraBold,
+    color: colors.white,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 8,
-    fontWeight: '500',
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    fontWeight: typography.weights.medium,
   },
   formContainer: {
-    backgroundColor: '#161622',
-    borderRadius: 20,
-    padding: 24,
+    backgroundColor: colors.card,
+    borderRadius: spacing.borderRadiusXxl,
+    padding: spacing.xl,
     borderWidth: 1,
-    borderColor: '#1e1e2f',
+    borderColor: colors.border,
   },
   errorBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(244, 63, 94, 0.15)',
     borderWidth: 1,
-    borderColor: '#ef4444',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 20,
+    borderColor: colors.error,
+    padding: spacing.sm,
+    borderRadius: spacing.borderRadiusMd,
+    marginBottom: spacing.lg,
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '500',
+    color: colors.error,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
     textAlign: 'center',
   },
   label: {
-    fontSize: 14,
-    color: '#94a3b8',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#1e1e2f',
-    borderColor: '#2d2d44',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#ffffff',
-    marginBottom: 16,
-  },
-  passwordInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e1e2f',
-    borderColor: '#2d2d44',
-    borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingRight: 16,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#ffffff',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  validationError: {
-    color: '#ef4444',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: -10,
-    marginBottom: 16,
-  },
-  visibilityToggle: {
-    justifyContent: 'center',
-  },
-  visibilityText: {
-    color: '#8b5cf6',
-    fontWeight: '600',
-    fontSize: 13,
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.xs,
   },
   roleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   roleOption: {
     flex: 0.48,
-    backgroundColor: '#1e1e2f',
-    borderColor: '#2d2d44',
+    backgroundColor: colors.card,
+    borderColor: colors.borderLight,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: spacing.borderRadiusLg,
     paddingVertical: 14,
     alignItems: 'center',
   },
   roleOptionActive: {
     backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    borderColor: '#8b5cf6',
+    borderColor: colors.primary,
   },
   roleOptionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94a3b8',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textSecondary,
   },
   roleOptionTextActive: {
-    color: '#a78bfa',
+    color: colors.primaryLight,
   },
-  button: {
-    backgroundColor: '#8b5cf6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+  submitButton: {
+    marginTop: spacing.sm,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    marginTop: spacing.xl,
     alignItems: 'center',
-    marginTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.lg,
   },
   footerText: {
-    color: '#64748b',
-    fontSize: 14,
+    color: colors.textMuted,
+    fontSize: typography.sizes.md,
+    marginBottom: spacing.sm,
   },
-  footerLink: {
-    color: '#8b5cf6',
-    fontSize: 14,
-    fontWeight: '700',
+  loginButton: {
+    width: '100%',
+    paddingVertical: 10,
   },
 });
 

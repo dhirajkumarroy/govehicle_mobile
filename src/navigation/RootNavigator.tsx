@@ -1,8 +1,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Platform } from 'react-native';
+import { Text, StyleSheet, Platform, View } from 'react-native';
 import { useAppSelector } from '../store';
+import OfflineBanner from '../components/OfflineBanner';
 import { useUnreadCount } from '../hooks/useNotifications';
 import {
   AuthStackParamList,
@@ -172,7 +173,12 @@ export const RootNavigator: React.FC = () => {
     return <SplashScreen />;
   }
 
-  return isAuthenticated ? <AppTabNavigator /> : <AuthStackNavigator />;
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0f0f16' }}>
+      <OfflineBanner />
+      {isAuthenticated ? <AppTabNavigator /> : <AuthStackNavigator />}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

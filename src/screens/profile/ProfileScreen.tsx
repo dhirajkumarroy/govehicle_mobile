@@ -9,9 +9,9 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Image,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppDispatch, useAppSelector } from '../../store';

@@ -3,13 +3,11 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { BookingStackParamList } from '../../navigation/types';
 import { useBooking } from '../../hooks/useBookings';
@@ -17,6 +15,12 @@ import { useCreateOrder, useVerifyPayment, useMyPayments } from '../../hooks/use
 import { useAppSelector } from '../../store';
 import Config from '../../config';
 import RazorpayCheckout from 'react-native-razorpay';
+import AppButton from '../../components/AppButton';
+import AppLoader from '../../components/AppLoader';
+import ErrorState from '../../components/ErrorState';
+import colors from '../../theme/colors';
+import spacing from '../../theme/spacing';
+import typography from '../../theme/typography';
 
 type PaymentScreenRouteProp = RouteProp<BookingStackParamList, 'PaymentScreen'>;
 
@@ -60,21 +64,21 @@ export const PaymentScreen: React.FC = () => {
     if (booking?.status === 'CONFIRMED' || booking?.status === 'COMPLETED' || booking?.status === 'ACCEPTED') {
       return {
         label: 'SUCCESS',
-        color: '#10b981',
+        color: colors.success,
         description: 'Payment verified and booking confirmed.',
       };
     }
     if (booking?.status === 'CANCELLED') {
       return {
         label: 'CANCELLED',
-        color: '#f43f5e',
+        color: colors.error,
         description: 'Booking reservation has been cancelled.',
       };
     }
     if (booking?.status === 'REJECTED') {
       return {
         label: 'REJECTED',
-        color: '#f43f5e',
+        color: colors.error,
         description: 'Booking reservation has been rejected by owner.',
       };
     }
@@ -84,26 +88,26 @@ export const PaymentScreen: React.FC = () => {
         case 'SUCCESS':
           return {
             label: 'SUCCESS',
-            color: '#10b981',
+            color: colors.success,
             description: 'Payment verified and booking confirmed.',
           };
         case 'FAILED':
           return {
             label: 'FAILED',
-            color: '#f43f5e',
+            color: colors.error,
             description: 'Previous transaction failed. Please retry.',
           };
         case 'REFUNDED':
           return {
             label: 'REFUNDED',
-            color: '#64748b',
+            color: colors.textMuted,
             description: 'Payment was refunded.',
           };
         case 'PENDING':
         default:
           return {
             label: 'PENDING',
-            color: '#8b5cf6',
+            color: colors.primary,
             description: 'Awaiting checkout authorization.',
           };
       }
@@ -111,7 +115,7 @@ export const PaymentScreen: React.FC = () => {
 
     return {
       label: 'PENDING',
-      color: '#8b5cf6',
+      color: colors.primary,
       description: 'Awaiting checkout authorization.',
     };
   };
@@ -154,7 +158,7 @@ export const PaymentScreen: React.FC = () => {
           name: user?.name || '',
         },
         theme: {
-          color: '#8b5cf6', // Indigo Violet accent
+          color: colors.primary,
         },
       };
 
@@ -223,15 +227,9 @@ export const PaymentScreen: React.FC = () => {
     }
   };
 
-  // Simulation handler to verify payments on backend with simulated signatures in test mode
-  // Note: Backend verification requires a real signature unless it is a mock environment.
-  // In development, the user can verify they get order creation. Let's send standard mock signature
-  // and see if the backend allows mock, or we notify them.
   const handleSimulatedPaymentSuccess = async (razorpayOrderId: string) => {
     setCheckoutLoading(true);
     try {
-      // Create mock verification signature payloads
-      // (Backend will throw invalid signature if backend keys are real, but in test mode this allows full testing)
       await verifyPaymentMutation.mutateAsync({
         razorpayOrderId: razorpayOrderId,
         razorpayPaymentId: `pay_mock_${Math.random().toString(36).substring(7)}`,
@@ -266,8 +264,7 @@ export const PaymentScreen: React.FC = () => {
   if (bookingLoading || paymentsLoading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#8b5cf6" />
-        <Text style={styles.loadingText}>Fetching checkout records...</Text>
+        <AppLoader message="Fetching checkout records..." />
       </SafeAreaView>
     );
   }
@@ -275,13 +272,11 @@ export const PaymentScreen: React.FC = () => {
   if (bookingError || !booking) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <Text style={styles.errorText}>Checkout Load Failed</Text>
-        <Text style={styles.errorSub}>
-          {bookingErr?.message || 'Could not retrieve booking details.'}
-        </Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => refetchBooking()}>
-          <Text style={styles.retryBtnText}>Retry Fetch</Text>
-        </TouchableOpacity>
+        <ErrorState
+          title="Checkout Load Failed"
+          message={bookingErr?.message || 'Could not retrieve booking details.'}
+          onRetry={refetchBooking}
+        />
       </SafeAreaView>
     );
   }
@@ -307,9 +302,12 @@ export const PaymentScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
-            <Text style={styles.backLinkText}>← Back</Text>
-          </TouchableOpacity>
+          <AppButton
+            title="← Back"
+            variant="outline"
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          />
           <Text style={styles.title}>Secure Checkout</Text>
           <Text style={styles.subtitle}>Complete payment using Razorpay gateway</Text>
         </View>
@@ -394,34 +392,23 @@ export const PaymentScreen: React.FC = () => {
       {/* Footer / Actions */}
       <View style={styles.footer}>
         {statusInfo.label === 'SUCCESS' ? (
-          <TouchableOpacity
-            style={styles.successDoneButton}
+          <AppButton
+            title="Go to My Bookings"
             onPress={() => navigation.navigate('BookingTab', { screen: 'MyBookings' })}
-          >
-            <Text style={styles.successDoneButtonText}>Go to My Bookings</Text>
-          </TouchableOpacity>
+            style={styles.successDoneButton}
+          />
         ) : statusInfo.label === 'CANCELLED' || statusInfo.label === 'REJECTED' ? (
-          <TouchableOpacity
-            style={styles.cancelDoneButton}
+          <AppButton
+            title="Return to Details"
+            variant="secondary"
             onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.cancelDoneButtonText}>Return to Details</Text>
-          </TouchableOpacity>
+          />
         ) : (
-          <TouchableOpacity
-            style={[styles.confirmButton, isActionPending && styles.confirmButtonDisabled]}
+          <AppButton
+            title={`Pay Now ($${totalPayable})`}
             onPress={handlePayNow}
-            disabled={isActionPending}
-          >
-            {isActionPending ? (
-              <View style={styles.btnLoadingRow}>
-                <ActivityIndicator color="#ffffff" style={styles.btnSpinner} />
-                <Text style={styles.confirmButtonText}>Processing...</Text>
-              </View>
-            ) : (
-              <Text style={styles.confirmButtonText}>Pay Now (${totalPayable})</Text>
-            )}
-          </TouchableOpacity>
+            loading={isActionPending}
+          />
         )}
       </View>
     </SafeAreaView>
@@ -431,42 +418,41 @@ export const PaymentScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f16',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 110,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 120,
   },
   header: {
-    paddingTop: 16,
-    marginBottom: 20,
+    paddingTop: spacing.md,
+    marginBottom: spacing.lg,
   },
-  backLink: {
-    marginBottom: 12,
-  },
-  backLinkText: {
-    color: '#8b5cf6',
-    fontWeight: '700',
-    fontSize: 13,
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.borderRadiusSm,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#ffffff',
+    fontSize: typography.sizes.h2,
+    fontWeight: typography.weights.extraBold,
+    color: colors.white,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 4,
-    fontWeight: '500',
+    fontSize: typography.sizes.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xxs,
+    fontWeight: typography.weights.medium,
   },
   statusBox: {
-    backgroundColor: '#161622',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#1e1e2f',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    borderColor: colors.border,
+    borderRadius: spacing.borderRadiusXl,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
   },
   statusRow: {
     flexDirection: 'row',
@@ -474,40 +460,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#cbd5e1',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textSecondary,
   },
   statusBadge: {
     borderWidth: 1.5,
-    borderRadius: 6,
+    borderRadius: spacing.borderRadiusSm,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
   statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: typography.sizes.xxs,
+    fontWeight: typography.weights.extraBold,
     letterSpacing: 0.5,
   },
   statusDescription: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-    marginTop: 6,
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    fontWeight: typography.weights.medium,
+    marginTop: spacing.xs,
   },
   card: {
-    backgroundColor: '#161622',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: spacing.borderRadiusXl,
     borderWidth: 1,
-    borderColor: '#1e1e2f',
-    padding: 18,
-    marginBottom: 16,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 14,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.white,
+    marginBottom: spacing.md,
   },
   vehicleRow: {
     flexDirection: 'row',
@@ -516,37 +502,37 @@ const styles = StyleSheet.create({
   vehicleImage: {
     width: 90,
     height: 70,
-    borderRadius: 10,
-    backgroundColor: '#1e1e2f',
+    borderRadius: spacing.borderRadiusMd,
+    backgroundColor: colors.border,
   },
   vehicleInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: spacing.md,
   },
   vehicleBrand: {
-    fontSize: 11,
-    color: '#8b5cf6',
-    fontWeight: '700',
+    fontSize: typography.sizes.xxs,
+    color: colors.primaryLight,
+    fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
   },
   vehicleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginTop: 2,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.white,
+    marginTop: spacing.xxs,
   },
   locationBadge: {
-    backgroundColor: '#1e1e2f',
+    backgroundColor: colors.border,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: spacing.borderRadiusSm,
     alignSelf: 'flex-start',
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   locationText: {
-    color: '#cbd5e1',
-    fontWeight: '600',
-    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.semibold,
+    fontSize: typography.sizes.xxs,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -560,180 +546,105 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   summaryLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
+    fontSize: typography.sizes.xxs,
+    color: colors.textMuted,
+    fontWeight: typography.weights.semibold,
     textTransform: 'uppercase',
   },
   summaryVal: {
-    fontSize: 14,
-    color: '#e2e8f0',
-    fontWeight: '700',
-    marginTop: 4,
+    fontSize: typography.sizes.md,
+    color: colors.white,
+    fontWeight: typography.weights.bold,
+    marginTop: spacing.xxs,
   },
   notesContainer: {
-    marginTop: 14,
+    marginTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#1e1e2f',
-    paddingTop: 12,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
   },
   notesText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 4,
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.sm,
+    marginTop: spacing.xxs,
   },
   pricingCard: {
-    backgroundColor: '#161622',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#1e1e2f',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 20,
+    borderColor: colors.border,
+    borderRadius: spacing.borderRadiusXl,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
   },
   pricingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 14,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.white,
+    marginBottom: spacing.md,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   priceDesc: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '500',
+    color: colors.textMuted,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
   },
   priceVal: {
-    color: '#e2e8f0',
-    fontSize: 13,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
   },
   divider: {
     height: 1,
-    backgroundColor: '#1e1e2f',
-    marginVertical: 14,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
   },
   totalDesc: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
+    color: colors.white,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
   },
   totalVal: {
-    color: '#a78bfa',
-    fontSize: 18,
-    fontWeight: '800',
+    color: colors.primaryLight,
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.extraBold,
   },
   secureContainer: {
     alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#1e1e2f',
+    borderTopColor: colors.border,
   },
   secureText: {
-    color: '#64748b',
-    fontSize: 11,
-    fontWeight: '600',
+    color: colors.textMuted,
+    fontSize: typography.sizes.xxs,
+    fontWeight: typography.weights.semibold,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: '#0f0f16',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: spacing.xxl,
   },
-  loadingText: {
-    marginTop: 12,
-    color: '#cbd5e1',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#f43f5e',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorSub: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: 16,
-    backgroundColor: '#1e1e2f',
-    borderColor: '#2d2d44',
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryBtnText: {
-    color: '#cbd5e1',
-    fontWeight: '700',
-    fontSize: 13,
+  successDoneButton: {
+    backgroundColor: colors.success,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#161622',
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderTopColor: '#1e1e2f',
-    padding: 20,
-  },
-  confirmButton: {
-    backgroundColor: '#8b5cf6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#4c1d95',
-  },
-  confirmButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  successDoneButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  successDoneButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  cancelDoneButton: {
-    backgroundColor: '#1e1e2f',
-    borderWidth: 1,
-    borderColor: '#2d2d44',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  cancelDoneButtonText: {
-    color: '#cbd5e1',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  btnLoadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnSpinner: {
-    marginRight: 8,
+    borderTopColor: colors.border,
+    padding: spacing.xl,
   },
 });
 

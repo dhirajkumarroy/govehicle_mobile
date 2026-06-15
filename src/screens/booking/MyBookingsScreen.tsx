@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMyBookings } from '../../hooks/useBookings';
 import { BookingStackParamList } from '../../navigation/types';
 import { Booking } from '../../types/booking';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
 
 export const MyBookingsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<BookingStackParamList>>();
@@ -108,18 +111,14 @@ export const MyBookingsScreen: React.FC = () => {
       </View>
 
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Fetching reservations catalog...</Text>
-        </View>
+        <FlatList
+          data={[1, 2, 3]}
+          keyExtractor={(item) => String(item)}
+          renderItem={() => <SkeletonLoader />}
+          contentContainerStyle={styles.listContainer}
+        />
       ) : isError ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Load failed</Text>
-          <Text style={styles.errorSub}>{error?.message || 'Server error occurred.'}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryBtnText}>Retry Fetch</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState onRetry={refetch} message={error?.message} />
       ) : (
         <FlatList
           data={filteredBookings}
@@ -136,9 +135,11 @@ export const MyBookingsScreen: React.FC = () => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No reservations found in this category.</Text>
-            </View>
+            <EmptyState
+              title="No bookings found"
+              message="You don't have any bookings listed under this category tab."
+              icon="📅"
+            />
           }
         />
       )}

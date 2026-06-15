@@ -3,12 +3,12 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useVehicle } from '../../hooks/useVehicles';
 import { VehicleStackParamList } from '../../navigation/types';

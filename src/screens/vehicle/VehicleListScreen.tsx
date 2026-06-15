@@ -4,7 +4,6 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   TouchableOpacity,
   TextInput,
   SafeAreaView,
@@ -12,6 +11,10 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -129,18 +132,14 @@ export const VehicleListScreen: React.FC = () => {
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Fetching available listings...</Text>
-        </View>
+        <FlatList
+          data={[1, 2, 3]}
+          keyExtractor={(item) => String(item)}
+          renderItem={() => <SkeletonLoader />}
+          contentContainerStyle={styles.listContainer}
+        />
       ) : isError ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Failed to load vehicles.</Text>
-          <Text style={styles.errorSub}>{error?.message || 'Server error occurred.'}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryBtnText}>Retry Fetch</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState onRetry={refetch} message={error?.message} />
       ) : (
         <FlatList
           data={vehicles}
@@ -157,10 +156,11 @@ export const VehicleListScreen: React.FC = () => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No vehicles found</Text>
-              <Text style={styles.emptySubtitle}>Try adjusting your search query or filters.</Text>
-            </View>
+            <EmptyState
+              title="No vehicles found"
+              message="Try adjusting your search query or filters."
+              icon="🚗"
+            />
           }
         />
       )}

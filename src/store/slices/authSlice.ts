@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import apiClient from '../../api/client';
 
 export interface UserProfile {
@@ -35,7 +35,7 @@ export const loadStoredToken = createAsyncThunk(
   'auth/loadStoredToken',
   async (_, { rejectWithValue }) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await SecureStore.getItemAsync('token');
       if (!token) {
         return { token: null, user: null };
       }
@@ -47,7 +47,7 @@ export const loadStoredToken = createAsyncThunk(
       return { token, user };
     } catch (error: any) {
       // If token expired or server unreachable, clear storage and reject
-      await AsyncStorage.removeItem('token');
+      await SecureStore.deleteItemAsync('token');
       return rejectWithValue(error.message || 'Session expired.');
     }
   }
@@ -61,8 +61,8 @@ export const loginUser = createAsyncThunk(
       const response = await apiClient.post('/auth/login', credentials);
       const { user, accessToken } = response.data.data;
 
-      // Persist token in AsyncStorage
-      await AsyncStorage.setItem('token', accessToken);
+      // Persist token in SecureStore
+      await SecureStore.setItemAsync('token', accessToken);
 
       return { user, token: accessToken };
     } catch (error: any) {
@@ -92,7 +92,7 @@ export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      await AsyncStorage.removeItem('token');
+      await SecureStore.deleteItemAsync('token');
       return null;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Logout failed.');

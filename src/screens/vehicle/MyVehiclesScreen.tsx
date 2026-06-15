@@ -6,15 +6,17 @@ import {
   TouchableOpacity,
   SafeAreaView,
   FlatList,
-  Image,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useOwnerVehicles, useDeleteVehicle } from '../../hooks/useOwner';
 import { Vehicle } from '../../types/vehicle';
 import Config from '../../config';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
+import { EmptyState } from '../../components/EmptyState';
 
 export const MyVehiclesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -147,10 +149,12 @@ export const MyVehiclesScreen: React.FC = () => {
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Fetching your listings...</Text>
-        </View>
+        <FlatList
+          data={[1, 2, 3]}
+          keyExtractor={(item) => String(item)}
+          renderItem={() => <SkeletonLoader />}
+          contentContainerStyle={styles.listContainer}
+        />
       ) : (
         <FlatList
           data={vehicles}
@@ -167,16 +171,18 @@ export const MyVehiclesScreen: React.FC = () => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🚗</Text>
-              <Text style={styles.emptyText}>You haven't listed any vehicles yet.</Text>
+            <EmptyState
+              title="You haven't listed any vehicles yet."
+              message="Add your first vehicle listing to start hosting."
+              icon="🚗"
+            >
               <TouchableOpacity
                 style={styles.emptyAddBtn}
                 onPress={() => navigation.navigate('CreateVehicle')}
               >
                 <Text style={styles.emptyAddBtnText}>Add Your First Vehicle</Text>
               </TouchableOpacity>
-            </View>
+            </EmptyState>
           }
         />
       )}
